@@ -2,17 +2,20 @@
 
 ## Environment Startup Verification
 
-**Default behavior:** starting the environment means starting **only infrastructure services** (database, mail, etc.) — **never** start the NestJS application server unless the user explicitly asks to run/serve the project (e.g., "rode o projeto", "suba o servidor", "run the app").
+**Default behavior:** starting the environment means starting **only infrastructure services** (database, mail, redis, minio, etc.) — **never** start the NestJS application server unless the user explicitly asks to run/serve the project (e.g., "rode o projeto", "suba o servidor", "run the app").
 
 After starting infrastructure, always confirm the containers are up before proceeding:
 
 ```bash
-docker compose ps   # all services must show status "running"
+docker compose ps   # all long-running services must show status "running" (minio-init exits 0 after creating bucket)
 ```
 
 Then verify each infrastructure service is actually ready to accept connections — not just running:
 
 - **PostgreSQL:** `docker compose exec db pg_isready -U streamtube` — expect `accepting connections`
+- **Redis:** `docker compose exec redis redis-cli ping` — expect `PONG`
+- **MinIO (Bucket check):** `docker compose exec minio /bin/sh -c "mc alias set local http://localhost:9000 minioadmin minioadmin >/dev/null && mc ls local"` — expect `streamtube-media/`
+- **FFmpeg (inside `nestjs-api`):** `docker compose exec nestjs-api ffprobe -version` — expect `ffprobe version`
 
 Only start the NestJS dev server (`npm run start:dev`) when the user **explicitly** asks to run the application — never as part of "start the environment".
 
@@ -21,10 +24,13 @@ Only start the NestJS dev server (`npm run start:dev`) when the user **explicitl
 This project runs inside Docker. Always use the container for development:
 
 ```bash
+# Build image when Dockerfile.dev changes (e.g. ffmpeg installation)
+docker compose build
+
 # Start containers
 docker compose up -d
 
-# Install dependencies (first time only)
+# Install dependencies (first time or after package.json changes)
 docker compose exec nestjs-api npm install
 
 # Run the dev server (watch mode)
@@ -32,8 +38,18 @@ docker compose exec nestjs-api npm run start:dev
 ```
 
 Services:
-- `nestjs-api` — NestJS API, port `3000`
+- `nestjs-api` — NestJS API, port `3000` (built from `Dockerfile.dev`, includes `ffmpeg` / `ffprobe`)
 - `db` — PostgreSQL 17, port `5432`, database `streamtube`, user/password `streamtube`
+- `mailpit` — Mailpit SMTP (`1025`) and Web UI (`8025`)
+- `redis` — Redis 7 (`redis:7-alpine`, `--maxmemory-policy noeviction --appendonly yes`), port `6379` (BullMQ backing store)
+- `minio` — MinIO S3-compatible object storage, S3 API on port `9000`, Web Console on port `9001` (`minioadmin` / `minioadmin`)
+- `minio-init` — One-shot container that creates the private `streamtube-media` bucket (`mc mb --ignore-existing`) when `minio` becomes healthy
+
+### Dual S3 Endpoint Rule (`S3_ENDPOINT` vs `S3_PUBLIC_ENDPOINT`)
+
+SigV4 presigned URLs include the `Host` header in the cryptographic signature:
+- `S3_ENDPOINT=http://minio:9000` is used by `nestjs-api` and `video-worker` for internal container-to-container S3 API calls and internal worker presigned URLs.
+- `S3_PUBLIC_ENDPOINT=http://localhost:9000` is used exclusively to sign URLs returned to external clients (browsers, `curl` on host) for multipart part uploads and `302` stream/download/thumbnail redirects. In container-internal integration/E2E tests that follow presigned URLs from inside `nestjs-api`, override `S3_PUBLIC_ENDPOINT=http://minio:9000`.
 
 All verification and teardown commands run on the **host machine**:
 
@@ -44,9 +60,17 @@ curl http://localhost:3000
 # Verify PostgreSQL is ready (runs inside the db container)
 docker compose exec db pg_isready -U streamtube
 
+# Verify Redis is ready
+docker compose exec redis redis-cli ping
+
+# Verify MinIO bucket exists
+docker compose exec minio /bin/sh -c "mc alias set local http://localhost:9000 minioadmin minioadmin >/dev/null && mc ls local"
+
 # Check container logs
 docker compose logs nestjs-api
 docker compose logs db
+docker compose logs redis
+docker compose logs minio
 
 # Tear down the entire environment
 docker compose down
@@ -79,6 +103,7 @@ npm run format                           # Prettier formatting
 docker compose ps
 docker compose logs nestjs-api
 docker compose exec db pg_isready -U streamtube
+docker compose exec redis redis-cli ping
 curl http://localhost:3000
 ```
 
@@ -111,7 +136,7 @@ Choose the suffix by what the test really does, not by where the code under test
 | `*.integration-spec.ts` | **Integration** — exercises real DB, real repositories, real modules | Required          | Next to the source file      |
 | `*.e2e-spec.ts`         | **End-to-end** — full HTTP cycle via `supertest`                     | Required          | `nestjs-project/test/`       |
 
-A test that constructs a `TypeOrmModule.forRoot`, opens a connection, or hits the `db` service **must** be `*.integration-spec.ts`, never `*.spec.ts`. A test that boots the full Nest application and makes HTTP calls **must** be `*.e2e-spec.ts`.
+A test that constructs a `TypeOrmModule.forRoot`, opens a connection, or hits the `db`, `redis`, or `minio` service **must** be `*.integration-spec.ts`, never `*.spec.ts`. A test that boots the full Nest application and makes HTTP calls **must** be `*.e2e-spec.ts`.
 
 Conventions for **how to write** each kind of test (mocking patterns, AAA structure, override strategies for global guards, etc.) live in `.claude/rules/nestjs-testing.md` and load when you edit a test file.
 
@@ -133,7 +158,7 @@ Do not add new test-file suffixes; if a new test type is needed, update the rege
 MAIL_FROM=StreamTube <noreply@streamtube.local>
 
 # Right — quote the value
-MAIL_FROM="StreamTube <noreply@streamtube.local>"
+MAIL_FROM='"StreamTube" <noreply@streamtube.local>'
 ```
 
 Whenever possible, prefer storing only the bare address in `.env` and composing display names in code (e.g., in `mail.config.ts`) so the file stays shell-safe.
