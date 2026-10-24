@@ -6,6 +6,7 @@ interface TestDataSourceOptions {
 }
 
 export function createTestDataSource(
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   entities: (Function | string | EntitySchema<any>)[],
   options: TestDataSourceOptions = {},
 ): DataSource {
