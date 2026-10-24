@@ -41,11 +41,16 @@ docker compose exec nestjs-api npm run start:dev
 
 Services:
 - `nestjs-api` — NestJS API, port `3000` (built from `Dockerfile.dev`, includes `ffmpeg` / `ffprobe`)
+- `video-worker` — Standalone NestJS background worker (`src/worker.ts`, `WorkerModule`), runs `npm run start:worker:dev` (`restart: unless-stopped`), consumes BullMQ queue `video-processing` (`process-video` jobs)
 - `db` — PostgreSQL 17, port `5432`, database `streamtube`, user/password `streamtube`
 - `mailpit` — Mailpit SMTP (`1025`) and Web UI (`8025`)
 - `redis` — Redis 7 (`redis:7-alpine`, `--maxmemory-policy noeviction --appendonly yes`), port `6379` (BullMQ backing store)
 - `minio` — MinIO S3-compatible object storage, S3 API on port `9000`, Web Console on port `9001` (`minioadmin` / `minioadmin`)
 - `minio-init` — One-shot container that creates the private `streamtube-media` bucket (`mc mb --ignore-existing`) when `minio` becomes healthy
+
+### Video Worker Operation & Startup Order
+
+`video-worker` shares the bind-mounted codebase volume (`node_modules`) with `nestjs-api`. After `docker compose up -d` and `docker compose exec nestjs-api npm install`, inspect worker readiness with `docker compose logs video-worker` (expect `VideoWorker started and listening on queue "video-processing"`). Worker scripts: `npm run start:worker:dev` and `npm run start:worker:prod`.
 
 ### Dual S3 Endpoint Rule (`S3_ENDPOINT` vs `S3_PUBLIC_ENDPOINT`)
 

@@ -39,11 +39,33 @@ docker compose exec nestjs-api npm run start:dev
 
 Services:
 - `nestjs-api` — NestJS API, port `3000` (built from `Dockerfile.dev`, includes `ffmpeg` / `ffprobe`)
+- `video-worker` — Standalone NestJS background worker (`src/worker.ts`, `WorkerModule`), runs `npm run start:worker:dev` (`restart: unless-stopped`), consumes BullMQ queue `video-processing` (`process-video` jobs)
 - `db` — PostgreSQL 17, port `5432`, database `streamtube`, user/password `streamtube`
 - `mailpit` — Mailpit SMTP (`1025`) and Web UI (`8025`)
 - `redis` — Redis 7 (`redis:7-alpine`, `--maxmemory-policy noeviction --appendonly yes`), port `6379` (BullMQ backing store)
 - `minio` — MinIO S3-compatible object storage, S3 API on port `9000`, Web Console on port `9001` (`minioadmin` / `minioadmin`)
 - `minio-init` — One-shot container that creates the private `streamtube-media` bucket (`mc mb --ignore-existing`) when `minio` becomes healthy
+
+### Video Worker Operation & Startup Order
+
+`video-worker` shares the bind-mounted codebase volume (`node_modules`) with `nestjs-api`. On a fresh clone before `npm install` has been executed, `video-worker` may restart until `docker compose exec nestjs-api npm install` completes (`restart: unless-stopped` ensures it recovers automatically once `node_modules` is populated):
+
+```bash
+# 1. Start containers
+docker compose up -d
+
+# 2. Install dependencies inside nestjs-api (video-worker shares the volume and stabilizes automatically)
+docker compose exec nestjs-api npm install
+
+# 3. Inspect worker logs (expect: VideoWorker started and listening on queue "video-processing")
+docker compose logs video-worker
+```
+
+Worker scripts in `package.json`:
+- `npm run start:worker:dev` — `nest start --watch --entryFile worker` (development watch mode)
+- `npm run start:worker:prod` — `node dist/worker` (compiled production worker)
+
+To manually re-enqueue a video for processing during debugging, ensure its database `status` is `'processing'` and publish a job `{ "videoId": "<uuid>" }` with name `process-video` to the `video-processing` BullMQ queue.
 
 ### Dual S3 Endpoint Rule (`S3_ENDPOINT` vs `S3_PUBLIC_ENDPOINT`)
 
