@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { writeFileSync } from 'node:fs';
 import { AppModule } from './app.module';
@@ -11,5 +12,5 @@ export async function exportSpec(outputPath = 'openapi.json'): Promise<void> {
 }
 
 if (require.main === module) {
-  void exportSpec();
+  void exportSpec().then(() => process.exit(0));
 }
