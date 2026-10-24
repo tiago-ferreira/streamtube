@@ -1,17 +1,17 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 0/6 completed
+**SIs:** 2/6 completed
 
 ### SI-03.1 — Infrastructure: Docker Compose (`redis`, `minio`, `minio-init`), `ffmpeg` Image, Dependencies, and Config Namespaces
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 6/6 passing (`src/config/env.validation.integration-spec.ts`, `test/app.e2e-spec.ts`)
+- **Observations:** Used `elestio/minio:latest` in `compose.yaml` because upstream `minio/minio` removed public `:latest` images from Docker Hub; `elestio/minio:latest` includes both `minio` server and `mc` client binaries.
 
 ### SI-03.2 — StorageModule and StorageService (S3/MinIO Dual-Client Wrapper)
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 2/2 passing (`src/storage/storage.module.spec.ts`, `src/storage/storage.service.integration-spec.ts`)
+- **Observations:** Dual `S3Client` instances (`internalClient` + `publicSignerClient`) verified against real MinIO with 2-part multipart upload, `headObject`, HTTP `Range` (`206 Partial Content`), and `ResponseContentDisposition`.
 
 ### SI-03.3 — Video Entity and CreateVideos Migration
 - **Status:** pending
