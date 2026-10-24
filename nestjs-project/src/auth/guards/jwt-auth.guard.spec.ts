@@ -56,7 +56,10 @@ describe('JwtAuthGuard', () => {
 
   it('populates request.user on @Public() routes when a valid Bearer token is provided', async () => {
     mockReflector.getAllAndOverride.mockReturnValue(true);
-    const token = jwtService.sign({ sub: 'user-pub', email: 'pub@example.com' });
+    const token = jwtService.sign({
+      sub: 'user-pub',
+      email: 'pub@example.com',
+    });
     const request: Record<string, unknown> = {
       headers: { authorization: `Bearer ${token}` },
     };

@@ -6,9 +6,7 @@ async function bootstrap() {
   const logger = new Logger('VideoWorker');
   const app = await NestFactory.createApplicationContext(WorkerModule);
   app.enableShutdownHooks();
-  logger.log(
-    'VideoWorker started and listening on queue "video-processing"',
-  );
+  logger.log('VideoWorker started and listening on queue "video-processing"');
 }
 
 void bootstrap();

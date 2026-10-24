@@ -118,3 +118,69 @@ Content-Type: {{contentType}}
   "token": "{{resetToken}}",
   "new_password": "new-password123"
 }
+
+
+###
+# ─────────────────────────────────────────────
+# VÍDEOS — UPLOAD, PROCESSAMENTO E STREAMING (FASE 03)
+# ─────────────────────────────────────────────
+
+### 10. Iniciar upload de vídeo (pré-cadastra rascunho + retorna URLs pré-assinadas S3/MinIO)
+# @name createVideo
+POST {{baseUrl}}/videos
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "filename": "meu-video.mp4",
+  "size_bytes": 1048576,
+  "mime_type": "video/mp4",
+  "title": "Meu Primeiro Vídeo"
+}
+
+@videoSlug = {{createVideo.response.body.$.slug}}
+@part1Url = {{createVideo.response.body.$.upload.parts[0].url}}
+
+
+### 11. Re-assinar URLs de partes específicas (para retomada de upload)
+POST {{baseUrl}}/videos/{{videoSlug}}/upload/parts
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "part_numbers": [1]
+}
+
+
+### 12. Concluir upload multipart e enfileirar processamento (após PUT na URL pré-assinada)
+# Substitua o ETag pelo header ETag retornado pelo MinIO no PUT da parte 1
+POST {{baseUrl}}/videos/{{videoSlug}}/upload/complete
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "parts": [
+    {
+      "part_number": 1,
+      "etag": "\"<etag-retornado-pelo-minio>\""
+    }
+  ]
+}
+
+
+### 13. Consultar metadados do vídeo por slug (público quando ready; dono vê todos os status)
+GET {{baseUrl}}/videos/{{videoSlug}}
+Authorization: Bearer {{accessToken}}
+
+
+### 14. Streaming do vídeo (302 redirect para S3/MinIO com suporte a HTTP Range / 206 Partial Content)
+GET {{baseUrl}}/videos/{{videoSlug}}/stream
+
+
+### 15. Download do vídeo (302 redirect com Content-Disposition: attachment)
+GET {{baseUrl}}/videos/{{videoSlug}}/download
+
+
+### 16. Thumbnail gerada automaticamente (302 redirect para image/jpeg)
+GET {{baseUrl}}/videos/{{videoSlug}}/thumbnail
+

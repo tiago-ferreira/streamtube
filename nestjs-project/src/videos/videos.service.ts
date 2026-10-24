@@ -137,7 +137,9 @@ export class VideosService {
       }
 
       if (!savedVideo) {
-        throw new Error('Slug conflict could not be resolved after max retries');
+        throw new Error(
+          'Slug conflict could not be resolved after max retries',
+        );
       }
     } catch (err) {
       await this.storageService
@@ -194,7 +196,9 @@ export class VideosService {
     const partCount = this.computePartCount(Number(video.size_bytes));
     const uniqueParts = new Set(dto.part_numbers);
     if (uniqueParts.size !== dto.part_numbers.length) {
-      throw new InvalidUploadPartsException('Duplicate part numbers are not allowed');
+      throw new InvalidUploadPartsException(
+        'Duplicate part numbers are not allowed',
+      );
     }
 
     for (const partNumber of dto.part_numbers) {

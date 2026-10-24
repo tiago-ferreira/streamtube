@@ -2,6 +2,12 @@
 
 **Status:** completed
 **SIs:** 6/6 completed
+**Full Suite Summary (DoD):**
+- **Unit & Integration (`npm test -- --runInBand`):** 34/34 suites, 193/193 tests passing
+- **End-to-End (`npm run test:e2e`):** 4/4 suites, 57/57 tests passing
+- **TypeScript (`npx tsc --noEmit`):** exit code 0 (0 errors)
+- **ESLint (`npm run lint`):** exit code 0 (0 errors)
+- **Build (`npm run build`):** exit code 0 (`dist/main.js` and `dist/worker.js` built cleanly)
 
 ### SI-03.1 — Infrastructure: Docker Compose (`redis`, `minio`, `minio-init`), `ffmpeg` Image, Dependencies, and Config Namespaces
 - **Status:** completed

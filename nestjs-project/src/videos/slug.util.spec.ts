@@ -9,7 +9,9 @@ describe('generateVideoSlug', () => {
   });
 
   it('should generate distinct slugs across multiple invocations', () => {
-    const slugs = new Set(Array.from({ length: 500 }, () => generateVideoSlug()));
+    const slugs = new Set(
+      Array.from({ length: 500 }, () => generateVideoSlug()),
+    );
     expect(slugs.size).toBe(500);
   });
 });

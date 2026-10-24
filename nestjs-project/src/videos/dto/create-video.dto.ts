@@ -34,7 +34,9 @@ export class CreateVideoDto {
   })
   @IsInt()
   @Min(1)
-  @Max(Number(process.env.UPLOAD_MAX_SIZE_BYTES) || DEFAULT_MAX_UPLOAD_SIZE_BYTES)
+  @Max(
+    Number(process.env.UPLOAD_MAX_SIZE_BYTES) || DEFAULT_MAX_UPLOAD_SIZE_BYTES,
+  )
   size_bytes: number;
 
   @ApiProperty({

@@ -42,7 +42,9 @@ export class FfmpegService {
 
     let parsedJson: FfprobeRawOutput;
     try {
-      parsedJson = JSON.parse(stdoutBuffer.toString('utf-8')) as FfprobeRawOutput;
+      parsedJson = JSON.parse(
+        stdoutBuffer.toString('utf-8'),
+      ) as FfprobeRawOutput;
     } catch {
       throw new Error('Failed to parse ffprobe JSON output');
     }
@@ -71,7 +73,11 @@ export class FfmpegService {
     ];
 
     const jpegBuffer = await this.runProcess('ffmpeg', args);
-    if (jpegBuffer.length < 4 || jpegBuffer[0] !== 0xff || jpegBuffer[1] !== 0xd8) {
+    if (
+      jpegBuffer.length < 4 ||
+      jpegBuffer[0] !== 0xff ||
+      jpegBuffer[1] !== 0xd8
+    ) {
       throw new Error('FFmpeg did not produce a valid JPEG frame');
     }
 
@@ -106,7 +112,9 @@ export class FfmpegService {
         if (code === 0) {
           resolve(Buffer.concat(stdoutChunks));
         } else {
-          const stderrText = Buffer.concat(stderrChunks).toString('utf-8').trim();
+          const stderrText = Buffer.concat(stderrChunks)
+            .toString('utf-8')
+            .trim();
           reject(
             new Error(
               `${command} exited with code ${code}: ${stderrText || 'unknown error'}`,

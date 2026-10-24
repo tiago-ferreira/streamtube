@@ -22,9 +22,29 @@ See `docs/diagrams/software-arch.mermaid` for the full diagram. Key containers:
 - **API** (Nest.js) → business rules, auth, reads/writes DB, uploads to storage, publishes jobs to queue, sends emails
 - **Video Worker** (FFmpeg) → consumes jobs from queue, processes videos, updates DB and storage
 - **Database** (PostgreSQL) → users, channels, videos, comments, likes
-- **Object Storage** (S3/MinIO) → video files and thumbnails
-- **Message Queue** (TBD) → video processing job queue
+- **Object Storage** (S3/MinIO) → video files and thumbnails (`streamtube-media` bucket)
+- **Message Queue** (Redis / BullMQ) → video processing job queue (`video-processing`)
 - **Email Service** (SMTP) → account confirmation and password recovery
+
+## Videos (Phase 03)
+
+See [docs/phases/phase-03-videos/phase-03-videos.md](docs/phases/phase-03-videos/phase-03-videos.md) and [docs/decisions/technical-decisions-phase-03-videos.md](docs/decisions/technical-decisions-phase-03-videos.md) for full details.
+
+- **Modules:**
+  - `StorageModule` (`nestjs-project/src/storage/`) — S3 multipart upload orchestration (`createMultipartUpload`, `presignUploadParts`, `completeMultipartUpload`, `abortMultipartUpload`), object transfer (`downloadObjectToFile`, `uploadFile`), and presigned delivery URLs (`presignGetObject`) using dual `S3Client` instances (`S3_ENDPOINT=http://minio:9000` for internal Docker calls, `S3_PUBLIC_ENDPOINT=http://localhost:9000` for client-facing presigned URLs).
+  - `VideosModule` (`nestjs-project/src/videos/`) — Video entity (`videos` table), Base62 slug generation (`nestjs-project/src/videos/slug.util.ts`), upload lifecycle and delivery orchestration (`VideosService`), and REST controller (`VideosController`).
+  - `WorkerModule` (`nestjs-project/src/video-worker/`, standalone entrypoint `nestjs-project/src/worker.ts`) — BullMQ consumer (`VideoProcessor`) and FFmpeg/ffprobe wrapper (`FfmpegService`, `nestjs-project/src/video-worker/ffprobe-parser.ts`).
+- **Endpoints:**
+  - `POST /videos` — Pre-registers a `DRAFT` + `UPLOADING` video for the authenticated user's channel, initiates S3 multipart upload, and returns `{ id, slug, status, visibility, upload: { uploadId, key, partSize, totalParts, parts } }`.
+  - `POST /videos/:slug/upload/parts` — Re-signs specific multipart upload part numbers (`1..10000`) for resumable uploads (`@HttpCode(200)`).
+  - `POST /videos/:slug/upload/complete` — Completes the S3 multipart upload, transitions status to `PROCESSING` (idempotent if already `PROCESSING` or `READY`), and enqueues a BullMQ job (`@HttpCode(200)`).
+  - `GET /videos/:slug` — Public metadata endpoint (also accepts optional Bearer JWT via `JwtAuthGuard` on `@Public()` routes); hides `DRAFT` videos from non-owners (`404`).
+  - `GET /videos/:slug/stream` — `302` redirect to a presigned S3 GET URL (`inline`) supporting HTTP `Range` requests (`206 Partial Content`).
+  - `GET /videos/:slug/download` — `302` redirect to a presigned S3 GET URL with `Content-Disposition: attachment; filename="<slug>.<ext>"`.
+  - `GET /videos/:slug/thumbnail` — `302` redirect to a presigned S3 GET URL (`image/jpeg`) for `videos/{videoId}/thumbnail.jpg`.
+- **Queue & Worker (`video-processing`):**
+  - Job name: `process-video`, payload `{ videoId }`, deterministic `jobId = videoId`, `attempts: 3`, exponential backoff (`5000ms`), `UnrecoverableError('NO_VIDEO_STREAM')` for files without a video track.
+  - Extracts `durationSeconds`, `width`, `height`, and `videoCodec` via `ffprobe`, generates a JPEG thumbnail (`-vf thumbnail,scale='min(1280,iw)':-2 -frames:v 1 -q:v 2`) at `min(max(1, floor(duration * 0.1)), duration - 0.1)` seconds, uploads to `videos/{videoId}/thumbnail.jpg`, and marks the video `READY` (or `FAILED` after exhausting retries).
 
 ## Docker Networking
 

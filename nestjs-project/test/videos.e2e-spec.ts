@@ -155,9 +155,8 @@ describe('Videos (e2e)', () => {
     });
 
     it('rejects size_bytes > 10 GiB (10737418241) and unsupported mime_type (image/png) with 400 VALIDATION_ERROR', async () => {
-      const { access_token } = await registerConfirmAndLogin(
-        'val@streamtube.com',
-      );
+      const { access_token } =
+        await registerConfirmAndLogin('val@streamtube.com');
 
       const tooLargeRes = await request(app.getHttpServer())
         .post('/videos')
@@ -281,7 +280,7 @@ describe('Videos (e2e)', () => {
       // 2. Upload part 1 directly to MinIO
       const putRes = await fetch(upload.parts[0].url, {
         method: 'PUT',
-        body: mp4Fixture,
+        body: new Uint8Array(mp4Fixture),
       });
       expect(putRes.status).toBe(200);
       const etag = putRes.headers.get('etag')!;

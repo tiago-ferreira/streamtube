@@ -56,14 +56,16 @@ describe('VideosService (Unit)', () => {
     return v;
   }
 
-  function buildHarness(overrides: {
-    videoRepository?: any;
-    dataSource?: any;
-    channelsService?: any;
-    storageService?: any;
-    videoQueue?: any;
-    affected?: number;
-  } = {}) {
+  function buildHarness(
+    overrides: {
+      videoRepository?: any;
+      dataSource?: any;
+      channelsService?: any;
+      storageService?: any;
+      videoQueue?: any;
+      affected?: number;
+    } = {},
+  ) {
     const affected = overrides.affected ?? 1;
     const executeMock = jest.fn().mockResolvedValue({ affected });
     const whereMock = jest.fn().mockReturnValue({ execute: executeMock });
@@ -121,12 +123,12 @@ describe('VideosService (Unit)', () => {
     };
 
     const service = new VideosService(
-      videoRepository as any,
-      dataSource as any,
-      channelsService as any,
-      storageService as any,
+      videoRepository,
+      dataSource,
+      channelsService,
+      storageService,
       defaultUploadCfg,
-      videoQueue as any,
+      videoQueue,
     );
 
     return {
