@@ -32,6 +32,7 @@ function makeUniqueError(): QueryFailedError {
 
 function makeDataSource(manager: any): any {
   return {
+    manager,
     transaction: jest.fn((cb: (manager: any) => Promise<any>) => cb(manager)),
   };
 }
@@ -130,6 +131,34 @@ describe('ChannelsService', () => {
         service.createChannel('user-id', 'carol@example.com'),
       ).rejects.toThrow('Connection lost');
       expect(manager.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('findByUserId', () => {
+    it('returns the channel when found for user_id', async () => {
+      const channel = makeChannel('tiago');
+      const manager = makeManager({
+        findOne: jest.fn().mockResolvedValue(channel),
+      });
+      const service = new ChannelsService(makeDataSource(manager));
+
+      const result = await service.findByUserId('user-id');
+
+      expect(manager.findOne).toHaveBeenCalledWith(Channel, {
+        where: { user_id: 'user-id' },
+      });
+      expect(result).toBe(channel);
+    });
+
+    it('returns null when no channel exists for user_id', async () => {
+      const manager = makeManager({
+        findOne: jest.fn().mockResolvedValue(null),
+      });
+      const service = new ChannelsService(makeDataSource(manager));
+
+      const result = await service.findByUserId('missing-user');
+
+      expect(result).toBeNull();
     });
   });
 });
