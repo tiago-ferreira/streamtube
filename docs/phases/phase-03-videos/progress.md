@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 2/6 completed
+**SIs:** 3/6 completed
 
 ### SI-03.1 — Infrastructure: Docker Compose (`redis`, `minio`, `minio-init`), `ffmpeg` Image, Dependencies, and Config Namespaces
 - **Status:** completed
@@ -14,9 +14,9 @@
 - **Observations:** Dual `S3Client` instances (`internalClient` + `publicSignerClient`) verified against real MinIO with 2-part multipart upload, `headObject`, HTTP `Range` (`206 Partial Content`), and `ResponseContentDisposition`.
 
 ### SI-03.3 — Video Entity and CreateVideos Migration
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 6/6 passing (`src/videos/entities/video.entity.integration-spec.ts`, `src/database/migrations.integration-spec.ts`)
+- **Observations:** Generated `1792884116464-CreateVideos.ts` migration with `video_status` enum, unique `slug`, `channel_id` and `status` indexes, and `ON DELETE CASCADE` FK. Changed `DROP TABLE` loop in `migrations.integration-spec.ts` to run sequentially to avoid PostgreSQL lock contention across FK-linked tables.
 
 ### SI-03.4 — Video Upload Flow: Draft Pre-Registration, Part URL Refresh, and Completion with Queue Dispatch
 - **Status:** pending
