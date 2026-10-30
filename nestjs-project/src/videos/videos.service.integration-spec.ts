@@ -79,9 +79,9 @@ describe('VideosService (Integration)', () => {
   });
 
   beforeEach(async () => {
+    await videoQueue.obliterate({ force: true });
     await videoQueue.pause();
     await cleanAllTables(dataSource);
-    await videoQueue.obliterate({ force: true });
   });
 
   afterAll(async () => {

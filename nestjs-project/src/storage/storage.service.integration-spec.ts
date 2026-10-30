@@ -122,5 +122,5 @@ describe('StorageService (Integration)', () => {
     // 8. Delete object and confirm headObject rejects
     await storageService.deleteObject(key);
     await expect(storageService.headObject(key)).rejects.toThrow();
-  });
+  }, 30_000);
 });
