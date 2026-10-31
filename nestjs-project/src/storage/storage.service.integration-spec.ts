@@ -118,6 +118,8 @@ describe('StorageService (Integration)', () => {
     expect(downloadRes.headers.get('content-disposition')).toBe(
       'attachment; filename="aula.mp4"',
     );
+    const downloadBytes = await downloadRes.arrayBuffer();
+    expect(downloadBytes.byteLength).toBe(totalSize);
 
     // 8. Delete object and confirm headObject rejects
     await storageService.deleteObject(key);
